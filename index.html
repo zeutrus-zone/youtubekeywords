@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tamil YouTube SEO Helper</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f6f3;--card:#fff;--ink:#14231e;--mute:#5b6b65;--acc:#0f5b4a;--acc2:#e9f3ef;--line:#d3dfd9}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1714;--card:#16231f;--ink:#e8f1ed;--mute:#9bb0a8;--acc:#5fd0ab;--acc2:#1d322b;--line:#2a3d36}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans Tamil",system-ui,sans-serif;padding:16px;max-width:760px;margin-inline:auto}
+h1{font-size:1.7rem;font-weight:800;margin:8px 0 2px}
+h2{font-size:1.05rem;margin:0 0 8px}
+p.sub{margin:0 0 16px;color:var(--mute)}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:.85rem;color:var(--mute);margin:8px 0 3px}
+input,textarea{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px}
+textarea{min-height:90px;resize:vertical}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:10px 16px;background:var(--acc);color:#fff;cursor:pointer}
+@media (prefers-color-scheme:dark){button{color:#0e1714}}
+button.ghost{background:var(--acc2);color:var(--acc);padding:6px 10px;font-size:.85rem}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:var(--acc2);color:var(--ink);border-radius:999px;padding:4px 11px;font-size:.9rem}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.len{font-size:.78rem;color:var(--mute)}
+.bad{color:#c0392b}
+pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;margin:0 0 8px}
+#msg{color:var(--mute);margin:8px 0 0;font-size:.9rem}
+details summary{cursor:pointer;font-weight:600}
+</style>
+</head>
+<body>
+<h1>Tamil YouTube SEO Helper</h1>
+<p class="sub">Type a topic in Tamil or English. Get keywords, hashtags, titles and a description.</p>
+
+<section>
+  <label for="topic">Video topic</label>
+  <input id="topic" placeholder="Tamil Muslim wedding / தமிழ் முஸ்லிம் திருமணம்">
+  <label for="tamil">Same topic in the other language (optional, improves results)</label>
+  <input id="alt" placeholder="e.g. முஸ்லிம் திருமணம்">
+  <p style="margin:12px 0 0"><button id="go">Find keywords</button></p>
+  <p id="msg"></p>
+</section>
+
+<section>
+  <details>
+    <summary>Settings: API key, description template, song credits</summary>
+    <label for="key">YouTube Data API key (stored only in this browser)</label>
+    <input id="key" type="password" placeholder="AIza...">
+    <label for="tpl">Your fixed description template (footer, links, social handles)</label>
+    <textarea id="tpl" placeholder="Subscribe: ...&#10;Instagram: ..."></textarea>
+    <label for="cred">Song credits</label>
+    <textarea id="cred" placeholder="Song: ...&#10;Artist: ..."></textarea>
+    <p style="margin:10px 0 0"><button class="ghost" id="save">Save settings</button></p>
+  </details>
+</section>
+
+<div id="out" hidden>
+  <section><h2>Title ideas</h2><div id="titles"></div></section>
+  <section><h2>Description (edit before use)</h2><pre id="desc"></pre><button class="ghost" data-copy="desc">Copy description</button></section>
+  <section><h2>Hashtags</h2><div class="chips" id="tags"></div><p class="len">YouTube shows the first 3 above the title and ignores all hashtags if you use more than 15.</p><button class="ghost" data-copy="tagtext">Copy hashtags</button></section>
+  <section><h2>Search suggestions (what people type)</h2><div class="chips" id="sugg"></div></section>
+  <section><h2>Keywords used by top videos</h2><div class="chips" id="kw"></div><p class="len">Paste into YouTube's Tags box (500 characters max).</p><button class="ghost" data-copy="kwtext">Copy keywords</button></section>
+  <section><h2>Top videos on this topic</h2><div id="top"></div></section>
+</div>
+
+<details style="margin:20px 0"><summary>How to get a YouTube API key (free)</summary>
+<ol>
+<li>Open console.cloud.google.com and sign in.</li>
+<li>Create a new project (any name).</li>
+<li>Go to APIs &amp; Services, then Library. Search "YouTube Data API v3" and click Enable.</li>
+<li>Go to Credentials, then Create credentials, then API key.</li>
+<li>Click the key, under Website restrictions add your GitHub Pages address (https://yourname.github.io/*), and under API restrictions choose YouTube Data API v3. This stops others from using your key.</li>
+<li>Paste the key in Settings above and save.</li>
+</ol></details>
+
+<script>
+const $=id=>document.getElementById(id);
+const L=k=>{try{return localStorage.getItem(k)||""}catch(e){return ""}};
+const S=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+["key","tpl","cred"].forEach(k=>$(k).value=L("yt_"+k));
+$("save").onclick=()=>{["key","tpl","cred"].forEach(k=>S("yt_"+k,$(k).value));$("msg").textContent="Settings saved."};
+
+const isTa=s=>/[\u0B80-\u0BFF]/.test(s);
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+function suggest(q,hl){return new Promise(res=>{
+  const cb="cb"+Math.random().toString(36).slice(2),s=document.createElement("script");
+  const done=v=>{delete window[cb];s.remove();res(v)};
+  window[cb]=d=>done((d&&d[1]||[]).map(x=>x[0]));
+  s.onerror=()=>done([]);setTimeout(()=>done([]),6000);
+  s.src="https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&hl="+hl+"&gl=IN&q="+encodeURIComponent(q)+"&jsonp="+cb;
+  document.head.appendChild(s)})}
+
+async function yt(path,params,key){
+  const u=new URL("https://www.googleapis.com/youtube/v3/"+path);
+  Object.entries({...params,key}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u),j=await r.json();
+  if(j.error)throw new Error(j.error.message);return j}
+
+const tagify=s=>"#"+s.replace(/[^\p{L}\p{N}\s]/gu,"").trim().split(/\s+/).map(w=>w[0].toUpperCase()+w.slice(1)).join("");
+const uniq=a=>[...new Set(a.map(x=>x.trim()).filter(Boolean))];
+const top=(arr,n)=>{const m={};arr.forEach(x=>{const k=x.toLowerCase().trim();if(k&&k.length<40)m[k]=(m[k]||0)+1});return Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,n).map(e=>e[0])};
+
+$("go").onclick=async()=>{
+  const topic=$("topic").value.trim(),alt=$("alt").value.trim();
+  if(!topic){$("msg").textContent="Enter a topic first.";return}
+  $("msg").textContent="Searching...";$("go").disabled=true;
+  try{
+    const qs=uniq([topic,alt,topic+" full video",alt&&alt+" வீடியோ"]);
+    const sug=uniq((await Promise.all(qs.flatMap(q=>["ta","en"].map(h=>suggest(q,h))))).flat()).slice(0,25);
+    let vids=[],tags=[],hts=[];
+    const key=$("key").value.trim();
+    if(key){
+      const q=alt&&isTa(alt)?alt:topic;
+      const s=await yt("search",{part:"snippet",q:topic,type:"video",order:"viewCount",maxResults:15,regionCode:"IN",relevanceLanguage:isTa(topic)?"ta":"en"},key);
+      const ids=s.items.map(i=>i.id.videoId).join(",");
+      const v=await yt("videos",{part:"snippet,statistics",id:ids},key);
+      vids=v.items;
+      vids.forEach(x=>{tags.push(...(x.snippet.tags||[]));hts.push(...((x.snippet.description+" "+x.snippet.title).match(/#[\p{L}\p{N}_]+/gu)||[]))});
+    }
+    const kw=top(tags,25),topHt=top(hts,10);
+    const hashtags=uniq([...topHt,...sug.slice(0,8).map(tagify),tagify(topic),alt&&tagify(alt)]).filter(h=>h.length>2).slice(0,15);
+    render(topic,alt,sug,kw,hashtags,vids);
+    $("msg").textContent=key?"Done.":"Done. Add an API key in Settings to also see top videos and their keywords.";
+  }catch(e){$("msg").textContent="Error: "+e.message}
+  $("go").disabled=false};
+
+function render(topic,alt,sug,kw,hashtags,vids){
+  $("out").hidden=false;
+  const ta=isTa(topic)?topic:(alt&&isTa(alt)?alt:""),en=isTa(topic)?alt:topic;
+  const s1=sug[0]||topic,s2=sug[1]||topic;
+  const t=uniq([
+    `${topic} | Full Video`,`${topic} - Beautiful Moments`,`${s1} | ${topic}`,
+    en&&`${en} Highlights 2026`,ta&&`${ta} | முழு வீடியோ`,ta&&`${ta} - அழகான தருணங்கள்`,
+    ta&&en&&`${en} | ${ta}`,`${s2} - Must Watch`]);
+  $("titles").innerHTML=t.map(x=>`<div class="row"><span>${esc(x)}</span><span><span class="len ${x.length>70?"bad":""}">${x.length}/70</span> <button class="ghost" data-text="${esc(x).replace(/"/g,"&quot;")}">Copy</button></span></div>`).join("");
+  const tpl=$("tpl").value.trim(),cred=$("cred").value.trim();
+  const parts=[
+    en?`${en} - watch the full video and share your thoughts in the comments.`:`${topic} - watch the full video and share your thoughts in the comments.`,
+    ta?`${ta} - முழு வீடியோவைப் பார்த்து உங்கள் கருத்துகளை கமெண்டில் பகிருங்கள்.`:"",
+    kw.length?"Keywords: "+kw.slice(0,12).join(", "):"",
+    tpl,cred&&"Music credits:\n"+cred,hashtags.slice(0,10).join(" ")].filter(Boolean);
+  $("desc").textContent=parts.join("\n\n");
+  $("tags").innerHTML=hashtags.map(h=>`<span class="chip">${esc(h)}</span>`).join("");
+  $("sugg").innerHTML=sug.map(h=>`<span class="chip">${esc(h)}</span>`).join("");
+  $("kw").innerHTML=kw.length?kw.map(h=>`<span class="chip">${esc(h)}</span>`).join(""):'<span class="len">Needs an API key.</span>';
+  $("top").innerHTML=vids.length?vids.map(v=>`<div class="row"><a href="https://youtu.be/${v.id}" target="_blank" rel="noopener">${esc(v.snippet.title)}</a><span class="len">${(+v.statistics.viewCount).toLocaleString("en-IN")} views</span></div>`).join(""):'<span class="len">Needs an API key.</span>';
+  window._tagtext=hashtags.join(" ");window._kwtext=kw.join(", ");
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("button");if(!b)return;
+  let txt=b.dataset.text;
+  if(b.dataset.copy)txt=b.dataset.copy=="desc"?$("desc").textContent:b.dataset.copy=="tagtext"?window._tagtext:window._kwtext;
+  if(txt!==undefined&&navigator.clipboard){navigator.clipboard.writeText(txt);const o=b.textContent;b.textContent="Copied";setTimeout(()=>b.textContent=o,1200)}});
+</script>
+</body>
+</html>
